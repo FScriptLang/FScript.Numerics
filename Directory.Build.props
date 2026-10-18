@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <Version Condition="'$(Version)' == ''">0.1.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <Authors>Magnus Opera</Authors>
+    <RepositoryUrl>https://github.com/MagnusOpera/FScript.Numerics</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsTestProject)' != 'true'">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

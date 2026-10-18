@@ -1,0 +1,2 @@
+[runtime]
+extern-assemblies = ["../src/FScript.Numerics.Extensions/bin/Release/net10.0/FScript.Numerics.Extensions.dll"]

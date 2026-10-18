@@ -2,4 +2,4 @@
 
 ## [Unreleased]
 
-- Introduce float64 NDArrays, shared views, numerical operations, and FScript integration.
+- Add float64 NDArrays with shared views, explicit element mutation, numerical operations, and an FScript extension.

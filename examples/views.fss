@@ -1,0 +1,7 @@
+// Transpose shares storage; copy and arithmetic create independent storage.
+let original = NDArray.ofRows [[1.0; 2.0]; [3.0; 4.0]]
+let view = NDArray.transpose original
+let copy = NDArray.copy original
+let added = NDArray.addScalar original 10.0
+NDArray.set view [1; 0] 9.0
+(NDArray.toRows original, NDArray.toRows copy, NDArray.toRows added, original = copy, NDArray.equals copy (NDArray.ofRows [[1.0; 2.0]; [3.0; 4.0]]))

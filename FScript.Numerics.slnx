@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FScript.Numerics.Extensions/FScript.Numerics.Extensions.csproj" />
+    <Project Path="src/FScript.Numerics/FScript.Numerics.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FScript.Numerics.Extensions.Tests/FScript.Numerics.Extensions.Tests.csproj" />
+    <Project Path="tests/FScript.Numerics.Tests/FScript.Numerics.Tests.csproj" />
+  </Folder>
+</Solution>

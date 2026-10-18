@@ -1,0 +1,31 @@
+name: Prepare Numerics Release
+on:
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.401
+      - name: Validate version and release notes
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"\d+\.\d+\.\d+",os.environ["RELEASE_VERSION"])'
+          python3 .github/scripts/notes.py "$RELEASE_VERSION" > "$RUNNER_TEMP/release-notes.md"
+      - run: make build test smoke-tests pack version=${{ github.ref_name }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          files: |
+            .out/packages/*.nupkg
+            .out/packages/*.snupkg

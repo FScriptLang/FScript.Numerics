@@ -1,0 +1,4 @@
+// Script bindings are immutable. Numerical arithmetic allocates new storage.
+let values = NDArray.ofList [1.0; 2.0; 3.0]
+let doubled = NDArray.multiplyScalar values 2.0
+(NDArray.toList values, NDArray.toList doubled, NDArray.sum doubled)
