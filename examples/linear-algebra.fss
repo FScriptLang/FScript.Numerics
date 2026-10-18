@@ -1,0 +1,6 @@
+let a = NDArray.ofRows [[3.0;1.0];[1.0;2.0]]
+let b = NDArray.ofList [9.0;8.0]
+let x = LAPACK.solve a b
+let (q,r) = LAPACK.qr a
+let lower = LAPACK.cholesky a
+(NDArray.allClose x (NDArray.ofList [2.0;3.0]) 0.000001 0.000001, NDArray.allClose (BLAS.matvec a x) b 0.000001 0.000001, NDArray.allClose (BLAS.matmul q r) a 0.000001 0.000001, NDArray.allClose (BLAS.matmul lower (NDArray.transpose lower)) a 0.000001 0.000001)

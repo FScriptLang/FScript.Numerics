@@ -1,18 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>FScript extension for float64 numerical arrays and explicit element mutation.</Description>
+    <Description>FScript SDK extension for numerical arrays, native linear algebra, statistics, and fitted machine learning models.</Description>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../FScript.Numerics/FScript.Numerics.csproj" />
+    <ProjectReference Include="../FScript.Numerics.Blas/FScript.Numerics.Blas.csproj" />
+    <ProjectReference Include="../FScript.Numerics.Lapack/FScript.Numerics.Lapack.csproj" />
+    <ProjectReference Include="../FScript.Numerics.Statistics/FScript.Numerics.Statistics.csproj" />
+    <ProjectReference Include="../FScript.Numerics.ML/FScript.Numerics.ML.csproj" />
     <PackageReference Include="MagnusOpera.FScript.Extensibility" />
   </ItemGroup>
-  <!-- Pin the companion package to this release, rather than NuGet's default minimum range. -->
-  <Target Name="PinCoreDependency" AfterTargets="_GetProjectReferenceVersions">
-    <ItemGroup>
-      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)">
-        <ProjectVersion>[$(PackageVersion)]</ProjectVersion>
-      </_ProjectReferencesWithVersions>
-    </ItemGroup>
-  </Target>
 </Project>

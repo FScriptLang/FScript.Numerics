@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><Description>Managed float64 multidimensional arrays, shared views, and numerical operations.</Description></PropertyGroup>
+  <PropertyGroup><Description>Managed multidimensional arrays with five dtypes, shared views, broadcasting, and numerical operations.</Description></PropertyGroup>
   <ItemGroup><PackageReference Include="System.Numerics.Tensors" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="FScript.Numerics.Tests" /></ItemGroup>
 </Project>

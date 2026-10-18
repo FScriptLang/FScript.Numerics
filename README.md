@@ -1,66 +1,89 @@
 # FScript.Numerics
 
-Float64 numerical arrays for .NET and FScript. The independent C# library owns numerical storage; a separate extension exposes it through the FScript SDK.
+Numerical arrays, native linear algebra, statistics, and classical machine learning for .NET 10 and FScript. The numerical libraries are independent of FScript; one SDK extension supplies the script environment.
 
-| Package | Target | Purpose |
+| Package | Purpose | Dependencies within this repository |
 | --- | --- | --- |
-| `FScript.Numerics` | .NET 10 | NDArrays, views, arithmetic, reductions, and matrix operations; no FScript dependency |
-| `FScript.Numerics.Extensions` | .NET 10 | FScript provider, descriptors, and wrap/unwrap helpers; uses Extensibility 1.0.0 |
+| `FScript.Numerics` | Five dtypes, shared views, broadcasting, arithmetic, reductions | None |
+| `FScript.Numerics.Blas` | OpenBLAS dot, norm, matrix-vector and matrix multiplication | Numerics |
+| `FScript.Numerics.Lapack` | Solvers, LU, QR, Cholesky, SVD, symmetric eigen | Numerics, Blas |
+| `FScript.Numerics.Statistics` | Descriptive statistics and seeded distributions | Numerics |
+| `FScript.Numerics.ML` | Scalers, regression, clustering, PCA, metrics | Numerics, Lapack, Statistics |
+| `FScript.Numerics.Extensions` | FScript descriptors, monomorphic schemes, opaque wrappers | All five libraries; Extensibility 1.0.0 |
 
-Both packages start at **0.1.0** and share a release version. The extension requires that exact version of the core. This repository prepares releases but does not publish packages during ordinary builds.
+All packages share version **0.1.0** and require the matching companion versions. The core and numerical modules have no FScript or FSharp.Core dependency. The production extension has no Language or Runtime dependency.
 
-## Run an example
+## Start with arrays
 
-Install the .NET SDK pinned in `global.json`, then run from this repository:
+```fsharp
+let a = NDArray.ofRows [[1.0;2.0;3.0];[4.0;5.0;6.0]]
+let b = NDArray.add a (NDArray.ofList [10.0;20.0;30.0])
+NDArray.toRows b
+// [[11;22;33];[14;25;36]]
+```
+
+Bindings and visible fields are immutable. **Explicit `NDArray.set` mutates storage** and ordinary views share that storage. Arithmetic, `copy`, native operations, and model fitting preserve their inputs. Broadcast views reject mutation. Ordinary `=` compares per-instance identity; `NDArray.equals` compares contents; `NDArray.equal` returns an elementwise bool mask.
+
+## Run the examples
+
+With the pinned .NET SDK installed:
 
 ```sh
 make build
 dotnet tool restore
-dotnet tool run fscript -- examples/arrays.fss
-dotnet tool run fscript -- examples/matrices.fss
-dotnet tool run fscript -- examples/views.fss
+dotnet tool run fscript -- examples/broadcasting.fss
+dotnet tool run fscript -- examples/linear-algebra.fss
+dotnet tool run fscript -- examples/statistics.fss
+dotnet tool run fscript -- examples/regression.fss
+dotnet tool run fscript -- examples/kmeans.fss
+dotnet tool run fscript -- examples/pca.fss
 ```
 
-The local tool manifest pins the published FScript CLI to **0.82.0**. Each example uses the adjacent [`fscript.toml`](examples/fscript.toml), which points to the built provider and discovers it automatically. With a global FScript 0.82.0 installation, `fscript examples/arrays.fss` also works. Opening this folder in VS Code discovers the same manifest; select it with **FScript: Select Configuration** if another configuration is selected. Build the provider first and trust the workspace to enable execution. Windows may require stopping the language server before rebuilding a DLL it has loaded.
+The tool manifest pins published FScript **0.83.1** for integration. A global installation also works: `fscript examples/pca.fss`. The adjacent [`fscript.toml`](examples/fscript.toml) selects the built provider. VS Code discovers that same file; use **FScript: Select Configuration** if needed. Trust the workspace, build first, and use **FScript: Debug Current Script** to inspect metadata. Large numerical storage stays hidden. Windows may require stopping the server before rebuilding a DLL it has loaded.
 
-```fsharp
-let values = NDArray.ofList [1.0; 2.0; 3.0]
-let doubled = NDArray.multiplyScalar values 2.0
-(NDArray.toList values, NDArray.toList doubled, NDArray.sum doubled)
-// ([1;2;3], [2;4;6], 12)
+After packages are published, consumers can replace local DLL paths with:
+
+```toml
+[[runtime.packages]]
+name = "FScript.Numerics.Extensions"
+version = "0.1.0"
 ```
 
-FScript bindings and visible fields remain immutable. `NDArray.set` explicitly mutates hidden numerical storage; shared views observe the change. Arithmetic and `copy` allocate independent storage. Ordinary `=` compares array identity; `NDArray.equals` and `NDArray.allClose` compare numerical contents.
+The extension aggregates all modules and registers NDArray once. FScript restores one dependency graph into the manifest-local `.fscript` cache. [Compatibility guidance](docs/compatibility.md) explains assembly identity and embedded hosts.
 
 ## Use from .NET
 
 ```csharp
 using FScript.Numerics;
+using FScript.Numerics.Blas;
+using FScript.Numerics.Lapack;
 
-var a = NDArray.FromRows([1, 2], [3, 4]);
-var view = a.Transpose();
-var copy = a.Copy();
-view.Set(9, 1, 0);                 // a.Get(0, 1) is now 9
-var product = a.Matmul(copy);      // new storage
+var a = NDArray.FromRows([3, 1], [1, 2]);
+var b = NDArray.FromArray([9, 8]);
+var solution = Decompositions.Solve(a, b); // [2, 3]
+var product = LinearAlgebra.Matmul(a, a); // fresh storage
 ```
 
-Constructors copy inputs. Shape and stride metadata are read-only, and strides count **elements**, not bytes. The core uses managed `double[]` storage and System.Numerics.Tensors 10.0.12 where contiguous kernels apply.
+Native functions require float32/float64. OpenBLAS loads only on first numerical use, with LP64 validation and actionable errors. See the [native support matrix](docs/native-backends.md) before deployment.
 
 ## Documentation and development
 
-- [FScript function reference and embedding](docs/specs/fscript-api.md)
-- [.NET API and numerical behavior](docs/specs/ndarray.md)
-- [Memory layout, mutation, and architecture](docs/architecture/overview.md)
-- [Contribution, validation, and release process](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+- [NDArray contract and .NET API](docs/specs/ndarray.md)
+- [Every FScript signature and descriptor field](docs/specs/registration.md)
+- [Operation arguments and numerical policies](docs/specs/operations.md)
+- [Embedding and SDK ownership](docs/specs/fscript-api.md)
+- [Architecture and mutation diagrams](docs/architecture/overview.md)
+- [Native assets, licensing, threads, and benchmarks](docs/native-backends.md)
+- [Grounding and milestone findings](docs/expansion-grounding.md)
+- [Validation record and platform boundaries](docs/validation.md)
+- [Contribution and release process](CONTRIBUTING.md)
 
 ```sh
-make build             # warning-free Release build
-make test              # numerical, SDK/runtime integration, and release-tool tests
-make smoke-tests       # every example through the published CLI
-make pack              # two packages + symbols, verified dependency graphs
-make verify-changelog
-make release-prepare version=0.1.0 dryrun=true  # requires a clean committed tree
+make build test smoke-tests pack verify-changelog
+make package-smoke-tests  # local NuGet graph -> published CLI/server/debugger
+make benchmark           # timings and allocations; run with chosen BLAS thread settings
+make reference           # regenerate the checked SDK reference
+make release-prepare version=0.1.0 dryrun=true # requires a clean committed tree
 ```
 
-Only float64 is included. General broadcasting, axis reductions, negative indexing/slicing, additional dtypes, native storage, BLAS/LAPACK, and in-place arithmetic are outside this release. Explicit element mutation is supported through `Set`/`set`. Concurrent reads and writes require caller synchronization.
+Negative indexing/slicing, sparse/GPU arrays, general batched algebra, in-place arithmetic, pipelines, Data and Plotting are outside this change. Concurrent writes require caller synchronization.

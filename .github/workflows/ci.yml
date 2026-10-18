@@ -7,7 +7,16 @@ permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      OPENBLAS_NUM_THREADS: 1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,4 +24,43 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.401
-      - run: make verify-changelog build test smoke-tests pack
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc-libgfortran
+      - name: Expose Windows GNU runtime dependencies
+        if: runner.os == 'Windows'
+        run: echo 'C:/msys64/mingw64/bin' >> "$GITHUB_PATH"
+      - name: Install Linux native prerequisite
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgfortran5
+      - run: dotnet build FScript.Numerics.slnx -c Release
+      - run: dotnet test FScript.Numerics.slnx -c Release --no-build
+      - run: |
+          python .github/scripts/changelog.py
+          python .github/scripts/test_release.py
+          python .github/scripts/verify_native.py
+          dotnet run --project tools/Reference -c Release -- --check
+          python .github/scripts/native_failure.py
+          python .github/scripts/smoke.py
+          python .github/scripts/lsp_smoke.py
+      - name: Pack all coordinated packages
+        run: |
+          for project in src/*/*.csproj; do dotnet pack "$project" -c Release -o .out/packages; done
+          python .github/scripts/verify_packages.py
+      - run: python .github/scripts/package_smoke.py
+      - name: Record copy-inclusive benchmark
+        run: dotnet run --project benchmarks/FScript.Numerics.Benchmarks -c Release > .out/benchmark.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ matrix.os }}
+          path: |
+            .out/benchmark.csv
+            .out/lsp-stderr.log

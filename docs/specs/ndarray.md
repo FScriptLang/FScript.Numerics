@@ -1,104 +1,78 @@
-# .NET API
+# NDArray contract and .NET API
 
-Install `FScript.Numerics` and use namespace `FScript.Numerics`. All numerical values are `double`, represented by `DType.Float64`. Both libraries require .NET 10.
+`NDArray` is sealed. `Shape` is an immutable ordered list of nonnegative dimensions. `DType` is `Float64`, `Float32`, `Int32`, `Int64`, or `Bool`; storage is the corresponding private managed array. Constructors copy input data and dimension/stride metadata. Views retain the allocation directly, so they survive the original wrapper becoming unreachable.
 
-## Shape and array metadata
+## Metadata and construction
 
-`Shape` is sealed, immutable, implements `IReadOnlyList<int>` and `IEquatable<Shape>`, and compares dimensions structurally. `new Shape(params int[] dimensions)` copies its input. `ToArray()` returns another copy. Negative dimensions and excessive nonempty products are rejected. `new Shape()` represents a scalar; `new Shape(0)` is an empty vector.
-
-| Member | Type | Purpose |
-| --- | --- | --- |
-| `Shape.Rank` / `Count` | `int` | Number of dimensions |
-| `Shape.Size` | `int` | Product of dimensions; scalar one, empty zero |
-| `Shape[index]` | `int` | Read a dimension |
-| `Shape.ToArray()` | `int[]` | Independent dimension copy |
-| `Shape.Equals`, `GetHashCode`, `ToString` | standard .NET methods | Structural equality, hashing, readable dimensions |
-
-`NDArray` is sealed, with private storage. Create instances using static factories.
-
-| Property | Type | Purpose |
-| --- | --- | --- |
-| `Shape` | `Shape` | Immutable dimensions |
-| `Strides` | `IReadOnlyList<int>` | Immutable **element** strides |
-| `Rank` | `int` | Number of dimensions |
-| `Size` | `int` | Logical element count |
-| `Offset` | `int` | Starting element offset into shared storage |
-| `DType` | `DType` | Always `Float64` |
-| `IsContiguous` | `bool` | Logical row-major layout, ignoring singleton strides |
-
-## Factories
-
-| Method | Result and validation |
+| API | Purpose |
 | --- | --- |
-| `Scalar(double value)` | Rank-zero single element |
-| `FromArray(double[] values)` | Rank-one copy; rejects null |
-| `FromArray(ReadOnlySpan<double> values, Shape shape)` | Shaped copy; count must equal shape size |
-| `FromRows(params double[][] rows)` | Rank-two copy; rejects null or ragged rows |
-| `Zeros(Shape shape)` | New row-major storage filled with zero |
-| `Ones(Shape shape)` | New storage filled with one |
-| `Full(Shape shape, double value)` | New storage filled with value |
-| `Arange(double start, double stop, double step)` | Stop-exclusive vector; finite arguments and nonzero step required |
-| `Identity(int size)` | Square identity matrix; nonnegative size |
+| `Shape`, `Rank`, `Size`, `DType`, `Offset`, `Strides` | Immutable layout; offset and strides count elements |
+| `IsContiguous`, `IsFortranContiguous`, `IsReadOnly` | C/F layout and broadcast write restriction |
+| `Scalar(value, dtype)` | Shape `[]`, one element |
+| `FromArray(double[], dtype)` / `FromArray(ReadOnlySpan<double>, Shape, dtype)` | Copy float inputs, optionally converting |
+| `FromFloat32`, `FromInt32`, `FromInt64`, `FromBooleans` | Exact typed inputs with optional shape; avoid converting wide integers through double |
+| `FromRows(rows)` / `FromRows(dtype, rows)` | Rectangular matrix; empty rows yield `[0,0]`, multiple empty rows retain their row count |
+| `Zeros`, `Ones`, `Full`, `Identity` | Fresh arrays, optional dtype defaults to Float64 |
+| `Arange(start,stop,step,dtype)` | Stop-exclusive finite progression; step nonzero; wrong direction yields empty |
+| `Linspace(start,stop,count,dtype)` | Finite endpoints, inclusive stop for count >= 2; count 0 empty, count 1 contains start |
 
-`FromRows()` produces `[0,0]`; `FromRows([], [])` preserves shape `[2,0]`. NaNs and infinities are valid stored values. `Arange` alone requires finite numeric inputs; a direction that disagrees with the bounds produces an empty vector. Floating-point endpoints follow double rounding, with values at or beyond the stop omitted. Excessive requested counts throw before allocation.
+Checked shape products, strides, offsets, allocation lengths, and integer arithmetic reject overflow. Scalars have size one, zero axes have size zero. A zero-size shape can still reject unrepresentable layout strides. Negative dimensions, ragged/null rows, mismatched data lengths, invalid enum values and invalid axes fail before numerical work.
 
 ## Access and views
 
-| Method | Behavior |
+`Get(params int[])` returns double; `Set(double, indices)` explicitly writes a value after dtype conversion. Integer conversions truncate toward zero and throw on overflow/nonfinite input; float32 rounds to the nearest representable single, potentially infinity. Bool conversion uses `value != 0` (including NaN). Use `GetInt64`/`SetInt64` and `ToInt64Array` for exact Int32/Int64 access, and `GetBoolean`/`SetBoolean`/`ToBooleanArray` for bool. Each requires the corresponding dtype. Exactly rank indices, all nonnegative and in bounds, are required.
+
+| API | Allocation and sharing |
 | --- | --- |
-| `Get(params int[] indices)` | Read one element; exactly one nonnegative in-bounds index per dimension |
-| `Set(double value, params int[] indices)` | Explicitly mutate exactly one element |
-| `Transpose()` | Zero-copy view reversing every axis; rank zero/one also supported |
-| `Permute(params int[] axes)` | Zero-copy view; complete unique permutation required |
-| `Slice(int axis, int start, int stop, int step = 1)` | Rank-preserving shared view; `0 <= start <= stop <= dimension`, step positive |
-| `Reshape(Shape shape)` | Shared view with equal size; contiguous input required |
-| `Copy()` | Independent contiguous array in logical row-major order |
-| `AsContiguous()` | Same instance when contiguous; otherwise `Copy()` |
-| `TryGetContiguousSpan(out ReadOnlySpan<double> span)` | True with read-only logical contents when contiguous; false and default span otherwise |
-| `ToArray()` | Independent flattened row-major `double[]`, any rank |
-| `ToRows()` | Independent `double[][]`; rank two required |
+| `Transpose()` | Reverses axes, zero-copy |
+| `Permute(axes)` | Every axis exactly once, zero-copy |
+| `Slice(axis,start,stop,step=1)` | Strict `0 <= start <= stop <= length`, positive step, rank preserved, zero-copy |
+| `Reshape(shape)` | Same count and C-contiguous layout required; offset allowed; rejects other layouts |
+| `ExpandDims(axis)` / `Squeeze()` | Insert a singleton axis / remove all singleton axes, zero-copy |
+| `BroadcastTo(shape)` | Trailing singleton expansion via zero strides; read-only, including derived views |
+| `Copy()` / `Flatten()` | Independent writable C-contiguous storage; flatten has shape `[Size]` |
+| `AsContiguous()` / `AsFortranContiguous()` | Same object if already in requested layout; otherwise independent storage |
+| `Astype(dtype)` | Independent C-contiguous storage even for the same dtype |
+| `ToArray`, `ToFloat32Array`, `ToInt64Array`, `ToBooleanArray`, `ToRows` | Independent logical row-major data; ToRows requires rank 2 |
+| `TryGetContiguousSpan` / `TryGetContiguousFloat32Span` | Read-only spans for matching contiguous floating storage; false otherwise |
 
-A scalar is indexed with no indices, for example `scalar.Get()` and `scalar.Set(2.0)`. Empty arrays have no valid element index. Slice steps may cause a checked stride overflow even on an empty result. `Reshape` never silently copies; explicitly call `Copy()` or `AsContiguous()` first. Read-only spans share storage, so callers must synchronize concurrent mutations.
+Contiguity ignores singleton-axis strides. Empty layouts are both C- and F-contiguous and do not dereference storage. A broadcast view is read-only even when contiguous; `AsContiguous` can therefore retain read-only status. Call `Copy` to guarantee writable independent storage.
 
-## Arithmetic, reductions, and algebra
-
-All returned NDArrays have new contiguous storage. Operands remain unchanged.
-
-| Method | Requirement / result |
-| --- | --- |
-| `Add(NDArray other)` | Equal shapes; elementwise addition |
-| `Subtract(NDArray other)` | Equal shapes; elementwise subtraction |
-| `Multiply(NDArray other)` | Equal shapes; elementwise multiplication |
-| `Divide(NDArray other)` | Equal shapes; elementwise division |
-| `Add(double scalar)` | Right-hand scalar addition |
-| `Subtract(double scalar)` | Right-hand scalar subtraction |
-| `Multiply(double scalar)` | Right-hand scalar multiplication |
-| `Divide(double scalar)` | Right-hand scalar division |
-| `Negate()` | Elementwise unary minus |
-| `Sum()` | Whole-array sum; empty returns zero |
-| `Mean()` | Whole-array mean; empty throws |
-| `Min()` | Whole-array minimum; empty throws |
-| `Max()` | Whole-array maximum; empty throws |
-| `Dot(NDArray other)` | Rank-one equal-length vectors; double scalar; empty returns zero |
-| `Matvec(NDArray vector)` | `[m,n]` × `[n]` → `[m]` |
-| `Matmul(NDArray other)` | `[m,k]` × `[k,n]` → `[m,n]` |
-| `ContentEquals(NDArray other)` | Equal shape and element values; NaN unequal, signed zeros equal |
-| `AllClose(NDArray other, double absoluteTolerance, double relativeTolerance)` | Equal shape and symmetric per-element tolerance comparison |
-
-Array arithmetic requires exactly matching shapes, including rank. A rank-zero NDArray never broadcasts implicitly; use the scalar overload explicitly. Matrix/vector multiplication requires the documented ranks, including when one dimension is zero. A zero inner dimension produces zeros of the resulting shape.
-
-Arithmetic preserves IEEE double behavior: division by zero yields infinities or NaN; reductions propagate NaN. Empty `Mean`, `Min`, and `Max` throw `InvalidOperationException`. Optimized reductions can round differently from strided reductions.
-
-`AllClose` requires finite, nonnegative tolerances and tests:
-
-```text
-abs(a - b) <= absoluteTolerance + relativeTolerance * max(abs(a), abs(b))
+```mermaid
+flowchart LR
+    a[Original NDArray] --> storage[Shared allocation]
+    t[Transpose / slice] --> storage
+    b[Read-only broadcast] --> storage
+    c[Copy / arithmetic result] --> other[Independent allocation]
 ```
 
-The comparison is symmetric, including an overflow-safe scaled calculation for extreme finite values. Equal infinities compare equal; other infinities and all NaNs compare unequal. Both numerical comparisons return false for different shapes and true for equal empty shapes. .NET `Equals` retains normal reference identity; use `ContentEquals` for numerical equality.
+Explicit source/view writes are observed through aliases, including broadcast views. FScript variables and layout snapshots remain immutable. No operation exposes writable storage spans publicly. Simultaneous reads/writes or overlapping writes require caller synchronization.
 
-## Errors
+## Broadcasting and dtypes
 
-Null arguments throw `ArgumentNullException`; invalid shapes, ranks, permutations, or shape mismatches throw `ArgumentException`; invalid indices, bounds, steps, and tolerances throw `ArgumentOutOfRangeException`. Unsupported non-contiguous reshape or rank-two conversion throws `InvalidOperationException`. Checked layout/count overflow throws `OverflowException`. Available memory can still limit otherwise valid allocations.
+Align trailing axes. Dimensions must match or one must be 1. In particular `0` with `1` yields `0`; `0` with a dimension greater than 1 is incompatible. Scalars broadcast to any shape; `[3] + [2,3] -> [2,3]`, `[2,1,3] + [1,4,1] -> [2,4,3]`. Errors include both input shapes. Arithmetic always allocates fresh storage.
 
-The [FScript bridge](fscript-api.md) translates argument, shape, and validation failures into SDK `ExtensionException` with the operation name and original cause. It does not change interpreter semantics.
+| Inputs | Result dtype |
+| --- | --- |
+| Float64 with any numerical dtype | Float64 |
+| Float32 with Float32 | Float32 |
+| Float32 with integer | Float64 |
+| Int64 with integer | Int64 |
+| Int32 with Int32 | Int32 |
+| Bool arithmetic / Bool mixed implicitly with numeric | Rejected |
+
+Integer add/subtract/multiply/negate/abs check overflow. Division and power of integers return Float64. Scalar arithmetic accepts double; it retains Float32 for Float32 input and otherwise promotes to Float64. `Exp`, `Log`, `Sqrt`, and `Clip` convert integer input to Float64. Bool arithmetic is rejected, but masks support reductions, composition, and comparisons. Explicit conversion to floats can lose integer precision; float access/conversion is a convenience, not exact Int64 transport.
+
+`EqualElements`, `Less`, `LessEqual`, `Greater`, `GreaterEqual` broadcast to Bool arrays. Integer comparisons retain precision above 2^53. Comparisons with NaN are false. `ContentEquals` requires equal shapes, permits differing dtypes, treats NaN as unequal and signed zeros as equal. `AllClose` additionally requires finite nonnegative tolerances and uses `|a-b| <= atol + rtol*max(|a|,|b|)`; matching infinities are equal, NaN is unequal. It scales extreme float comparisons to avoid overflow. Neither numerical comparison uses object identity.
+
+## Reductions and composition
+
+Whole `Sum`, `Product`, `Mean`, `Min`, `Max`, `Variance(ddof=0)`, `Std(ddof=0)` return double. Whole integer reductions therefore may lose Int64 precision; use axis reductions for checked integer accumulation. `All`/`Any` treat nonzero (including NaN) as true. `SumAxis`, `ProductAxis`, `MinAxis`, `MaxAxis`, `MeanAxis`, `VarianceAxis`, `StdAxis`, `AllAxis`, `AnyAxis` accept one nonnegative axis and optional `keepDimensions=false`. Variance/std also accept nonnegative degrees of freedom and divide by `count-ddof`.
+
+Integer/bool axis sum and product yield Int64, with checked arithmetic. Integer min/max preserve dtype; floating reductions retain dtype. Means/variance/std yield Float32 for Float32 input and Float64 otherwise; masks yield Bool. Variance uses a centered second pass. NaNs propagate in numerical reductions. Optimized and strided reduction paths need not be bit-identical.
+
+Empty sum/dot is 0; product is 1; all is true; any is false. Empty mean/min/max/variance/std throw. Variance also requires more observations than ddof. For axis reductions, these policies apply per output group; a zero-size output has no groups to evaluate.
+
+`Concatenate(arrays,axis=0)` requires nonempty input lists, equal ranks and dimensions outside the axis. `Stack(arrays,axis=0)` inserts an axis and requires equal shapes. Both copy. `Where(condition,whenTrue,whenFalse)` requires a Bool condition, broadcasts all three, and promotes the two branch dtypes. `Clip(minimum,maximum)` rejects NaN/reversed bounds.
+
+Managed `Dot`, `Matvec`, `Matmul` remain available as reference algorithms for float32/64, with no broadcasting or batched operations. See [native backends](../native-backends.md) for the optimized alternatives.

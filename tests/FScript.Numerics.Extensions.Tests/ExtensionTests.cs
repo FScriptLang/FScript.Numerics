@@ -11,23 +11,23 @@ namespace FScript.Numerics.Extensions.Tests;
 public class ExtensionTests
 {
     private static FSharpList<T> List<T>(IEnumerable<T> values) => ListModule.OfSeq(values);
-    private static FSharpFunc<T,U> Fn<T,U>(Func<T,U> function) => FSharpFunc<T,U>.FromConverter(v => function(v));
+    private static FSharpFunc<T, U> Fn<T, U>(Func<T, U> function) => FSharpFunc<T, U>.FromConverter(v => function(v));
     private static string Run(string source) => FScript.Language.Pretty.valueToString(ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration()), source).LastValue);
     private static ExternalCallContext Context() => new(
-        Fn<SV,FSharpFunc<SV,SV>>(_ => Fn<SV,SV>(_ => throw new NotSupportedException())),
-        Fn<SV,SV>(_ => throw new NotSupportedException()), Fn<SV,SV>(_ => throw new NotSupportedException()), Fn<Unit,Unit>(_ => null!));
+        Fn<SV, FSharpFunc<SV, SV>>(_ => Fn<SV, SV>(_ => throw new NotSupportedException())),
+        Fn<SV, SV>(_ => throw new NotSupportedException()), Fn<SV, SV>(_ => throw new NotSupportedException()), Fn<Unit, Unit>(_ => null!));
     private static SV Invoke(string name, params SV[] arguments) => NumericsExtension.CreateRegistration().Functions.Single(f => f.Name == "NDArray." + name).Impl.Invoke(Context()).Invoke(List(arguments));
 
     [Test]
     public void Registration_has_authoritative_monomorphic_schemes_and_visible_metadata()
     {
         var registration = NumericsProvider.Provide();
-        Assert.That(registration.Functions.Count(), Is.EqualTo(36));
-        Assert.That(registration.Functions.Select(f => f.Name).Distinct().Count(), Is.EqualTo(36));
-        var descriptor = registration.Types.Single();
+        Assert.That(registration.Functions.Count(), Is.EqualTo(137));
+        Assert.That(registration.Functions.Select(f => f.Name).Distinct().Count(), Is.EqualTo(137));
+        var descriptor = registration.Types.Single(t => t.Name == "NDArray");
         Assert.That(descriptor.Name, Is.EqualTo("NDArray"));
         Assert.That(descriptor.HostManaged, Is.True);
-        Assert.That(descriptor.Fields.Keys, Is.EquivalentTo(new[] { "Id", "Rank", "Size", "Shape", "DType" }));
+        Assert.That(descriptor.Fields.Keys, Is.EquivalentTo(new[] { "Id", "Rank", "Size", "Shape", "DType", "Strides", "IsContiguous", "IsFortranContiguous", "IsReadOnly" }));
         foreach (var function in registration.Functions)
         {
             var scheme = function.Scheme;
@@ -40,17 +40,17 @@ public class ExtensionTests
     [Test]
     public void Wrappers_preserve_actual_payload_and_validate_metadata()
     {
-        var array = NDArray.FromArray([1,2]);
+        var array = NDArray.FromArray([1, 2]);
         var wrapped = NumericsExtension.Wrap(array);
         Assert.That(NumericsExtension.Unwrap(wrapped), Is.SameAs(array));
         Assert.That(wrapped, Is.EqualTo(NumericsExtension.Wrap(array)));
         Assert.That(wrapped, Is.Not.EqualTo(NumericsExtension.Wrap(array.Copy())));
         var host = ((SV.VHostManaged)wrapped).Item;
-        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor,host.Fields,new object()))));
-        var fields = MapModule.Add("Rank", SV.NewVInt(99),host.Fields);
-        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor,fields,array))));
-        var other = new HostTypeDescriptor("Other",host.Descriptor.Fields,true);
-        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(other,host.Fields,array))));
+        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor, host.Fields, new object()))));
+        var fields = MapModule.Add("Rank", SV.NewVInt(99), host.Fields);
+        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor, fields, array))));
+        var other = new HostTypeDescriptor("Other", host.Descriptor.Fields, true);
+        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(other, host.Fields, array))));
         Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.VUnit));
     }
 
@@ -104,9 +104,9 @@ public class ExtensionTests
         Assert.That(exception!.Message, Does.StartWith("NDArray.zeros:"));
         Assert.That(exception.InnerException, Is.TypeOf<OverflowException>());
         Assert.Throws<ExtensionException>(() => Invoke("ofList", SV.NewVList(List(new[] { SV.NewVInt(1) }))));
-        Assert.Throws<ExtensionException>(() => Invoke("sum", SV.NewVRecord(MapModule.OfSeq(Array.Empty<Tuple<string,SV>>()))));
-        Assert.Throws<ExtensionException>(() => Invoke("get",NumericsExtension.Wrap(NDArray.Ones(new Shape(1))),SV.NewVList(List(new[] { SV.NewVInt(-1) }))));
-        Assert.Throws<ExtensionException>(() => Invoke("mean",NumericsExtension.Wrap(NDArray.Zeros(new Shape(0)))));
+        Assert.Throws<ExtensionException>(() => Invoke("sum", SV.NewVRecord(MapModule.OfSeq(Array.Empty<Tuple<string, SV>>()))));
+        Assert.Throws<ExtensionException>(() => Invoke("get", NumericsExtension.Wrap(NDArray.Ones(new Shape(1))), SV.NewVList(List(new[] { SV.NewVInt(-1) }))));
+        Assert.Throws<ExtensionException>(() => Invoke("mean", NumericsExtension.Wrap(NDArray.Zeros(new Shape(0)))));
     }
 
     [Test]
@@ -132,6 +132,6 @@ public class ExtensionTests
     {
         Assert.That(typeof(NDArray).Assembly.GetReferencedAssemblies().Select(a => a.Name), Has.None.StartsWith("FScript").And.None.EqualTo("FSharp.Core"));
         Assert.That(typeof(NumericsExtension).Assembly.GetReferencedAssemblies().Select(a => a.Name), Has.None.EqualTo("FScript.Language").And.None.EqualTo("FScript.Runtime"));
-        Assert.That(typeof(HostTypeDescriptor).Assembly.GetName().Version, Is.EqualTo(new Version(1,0,0,0)));
+        Assert.That(typeof(HostTypeDescriptor).Assembly.GetName().Version, Is.EqualTo(new Version(1, 0, 0, 0)));
     }
 }

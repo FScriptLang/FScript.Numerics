@@ -18,7 +18,7 @@ body=f'## [Unreleased]\n\n## [{version}]\n\n{match[1].strip()}\n\n{link}\n\n'
 if dryrun:
     print(f'Would prepare {version}; {link}');sys.exit(0)
 # Validate before changing release metadata or creating any commit/tag.
-for target in ['build','test','smoke-tests','pack','verify-changelog']:
+for target in ['build','test','smoke-tests','pack','package-smoke-tests','verify-changelog']:
     subprocess.run(['make',target,f'version={version}'],check=True)
 p.write_text(text[:match.start()]+body+text[match.end():])
 props=Path('Directory.Build.props')

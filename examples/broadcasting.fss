@@ -1,0 +1,5 @@
+let matrix = NDArray.reshape (NDArray.arange 0.0 6.0 1.0) [2;3]
+let offsets = NDArray.ofList [10.0;20.0;30.0]
+let shifted = NDArray.add matrix offsets
+let mask = NDArray.greater shifted (NDArray.scalar 20.0)
+(NDArray.toRows shifted, NDArray.toRows (NDArray.where mask shifted (NDArray.scalar 0.0)), NDArray.toList (NDArray.sumAxis shifted 0 false))

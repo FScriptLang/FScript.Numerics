@@ -1,0 +1,8 @@
+let x = NDArray.ofRows [[0.0];[1.0];[2.0];[3.0]]
+let y = NDArray.ofList [1.0;3.0;5.0;7.0]
+let (scaler,scaled) = StandardScaler.fitTransform x
+let model = LinearRegression.fit scaled y true
+let predicted = LinearRegression.predict model scaled
+let held = Task.spawn (fun () -> model)
+let returned = Task.await held
+(model.FeatureCount, NDArray.allClose predicted y 0.000001 0.000001, model = returned, Metrics.mse y y)

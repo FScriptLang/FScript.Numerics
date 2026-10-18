@@ -1,0 +1,7 @@
+{
+  "linux-arm64/native/libopenblas.so": "c8e38eb0e1ac60cf7c5822639f0327360026e2e6e6debbca4b8d71be5d290252",
+  "win-x86/native/libopenblas.dll": "3de42a66ce51f85bbfa5226389cbd1b279a505b730c3c992d10f462f5ad7726c",
+  "osx-arm64/native/libopenblas.dylib": "b85ecb8668df5a2edf9b2ce1daf25d97bb20c9ccc6f202506eab37b88baa15bb",
+  "win-x64/native/libopenblas.dll": "308d08d2ebc8d61bd3dd56461e3d0790ef11bbb9a3e4a49518055fcab0c95b3a",
+  "linux-x64/native/libopenblas.so": "4c46b2cbb0190714f3dcee59ff759c21ccf4c6123407f635d909d27cd67741d5"
+}

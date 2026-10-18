@@ -5,7 +5,8 @@ root = Path(__file__).resolve().parents[2]
 subprocess.run(['dotnet', 'tool', 'restore'], cwd=root, check=True)
 for script in sorted((root / 'examples').glob('*.fss')):
     result = subprocess.run(['dotnet','tool','run','fscript','--',str(script)], cwd=root,
-                            text=True, capture_output=True, check=True)
+                            text=True, capture_output=True, timeout=120)
+    assert result.returncode == 0, (script.name, result.stdout, result.stderr)
     expected = script.with_suffix('.expected').read_text().strip()
     assert result.stdout.strip() == expected, (script.name, result.stdout, result.stderr, expected)
     print(f'{script.name}: passed')

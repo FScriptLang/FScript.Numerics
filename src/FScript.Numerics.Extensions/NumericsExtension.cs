@@ -5,7 +5,7 @@ using Microsoft.FSharp.Collections;
 namespace FScript.Numerics.Extensions;
 
 /// <summary>SDK registration and lossless transport of core NDArray objects.</summary>
-public static class NumericsExtension
+public static partial class NumericsExtension
 {
     private sealed record Identity(string Value);
     private static readonly ConditionalWeakTable<NDArray, Identity> Identities = new();
@@ -16,15 +16,17 @@ public static class NumericsExtension
     private static readonly HostTypeDescriptor Descriptor = new("NDArray", Sdk.Map(new[]
     {
         ("Id", ScriptType.TString), ("Rank", ScriptType.TInt), ("Size", ScriptType.TInt),
-        ("Shape", IntList), ("DType", ScriptType.TString)
+        ("Shape", IntList), ("DType", ScriptType.TString), ("Strides",IntList), ("IsContiguous",ScriptType.TBool), ("IsFortranContiguous",ScriptType.TBool), ("IsReadOnly",ScriptType.TBool)
     }), true);
-    internal static readonly ExtensionRegistration TypeRegistration = new(Sdk.List(new[] { Descriptor }), Sdk.List(Array.Empty<HostUnionDescriptor>()), Sdk.List(Array.Empty<ExternalFunction>()));
+    internal static readonly ExtensionRegistration TypeRegistration = new(Sdk.List(new[] { Descriptor }.Concat(ModelInterop.Descriptors)), Sdk.List(Array.Empty<HostUnionDescriptor>()), Sdk.List(Array.Empty<ExternalFunction>()));
     private static FSharpMap<string, ScriptValue> Snapshot(NDArray array) => Sdk.Map(new[]
     {
         ("Id", ScriptValue.NewVString(Identities.GetValue(array, _ => new Identity(Guid.NewGuid().ToString("N"))).Value)),
         ("Rank", ScriptValue.NewVInt(array.Rank)), ("Size", ScriptValue.NewVInt(array.Size)),
         ("Shape", ScriptValue.NewVList(Sdk.List(array.Shape.Select(d => ScriptValue.NewVInt(d))))),
-        ("DType", ScriptValue.NewVString("float64"))
+        ("DType", ScriptValue.NewVString(array.DType.ToString().ToLowerInvariant())),
+        ("Strides",ScriptValue.NewVList(Sdk.List(array.Strides.Select(s=>ScriptValue.NewVInt(s))))),
+        ("IsContiguous",ScriptValue.NewVBool(array.IsContiguous)), ("IsFortranContiguous",ScriptValue.NewVBool(array.IsFortranContiguous)), ("IsReadOnly",ScriptValue.NewVBool(array.IsReadOnly))
     });
     public static ScriptValue Wrap(NDArray array)
     {
@@ -35,7 +37,8 @@ public static class NumericsExtension
     {
         if (value is not ScriptValue.VHostManaged host || !host.Item.Descriptor.Equals(Descriptor) || host.Item.Payload is not NDArray array)
             throw new ExtensionException("Expected a registered NDArray with an NDArray payload.");
-        if (!host.Item.Fields.Equals(Snapshot(array))) throw new ExtensionException("NDArray snapshot metadata does not match its payload.");
+        if (!host.Item.Fields.Equals(Snapshot(array)))
+            throw new ExtensionException("NDArray snapshot metadata does not match its payload.");
         return array;
     }
     public static ExtensionRegistration CreateRegistration()
@@ -78,6 +81,7 @@ public static class NumericsExtension
         Add("matmul", ArrayType, [ArrayType, ArrayType], a => Wrap(Unwrap(a[0]).Matmul(Unwrap(a[1]))));
         Add("equals", ScriptType.TBool, [ArrayType, ArrayType], a => ScriptValue.NewVBool(Unwrap(a[0]).ContentEquals(Unwrap(a[1]))));
         Add("allClose", ScriptType.TBool, [ArrayType, ArrayType, ScriptType.TFloat, ScriptType.TFloat], a => ScriptValue.NewVBool(Unwrap(a[0]).AllClose(Unwrap(a[1]), Sdk.Float(a[2]), Sdk.Float(a[3]))));
+        RegisterExpansion(functions);
         return new ExtensionRegistration(TypeRegistration.Types, TypeRegistration.Unions, Sdk.List(functions));
     }
 }

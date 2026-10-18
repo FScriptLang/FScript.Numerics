@@ -1,0 +1,4 @@
+let data = NDArray.ofRows [[1.0;2.0];[3.0;4.0];[5.0;6.0]]
+let sample = Statistics.normal [10] 0.0 1.0 42
+let (counts,edges) = Statistics.histogram (NDArray.ofList [0.0;0.5;1.0;1.5;2.0]) 2 0.0 2.0
+(Statistics.median data, NDArray.toRows (Statistics.covariance data 1), NDArray.toIntList counts, NDArray.equals sample (Statistics.normal [10] 0.0 1.0 42))

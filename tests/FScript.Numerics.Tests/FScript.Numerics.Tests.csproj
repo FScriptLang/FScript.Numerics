@@ -6,5 +6,9 @@
     <PackageReference Include="NUnit3TestAdapter" />
 
     <ProjectReference Include="../../src/FScript.Numerics/FScript.Numerics.csproj" />
+    <ProjectReference Include="../../src/FScript.Numerics.Blas/FScript.Numerics.Blas.csproj" />
+    <ProjectReference Include="../../src/FScript.Numerics.Lapack/FScript.Numerics.Lapack.csproj" />
+    <ProjectReference Include="../../src/FScript.Numerics.Statistics/FScript.Numerics.Statistics.csproj" />
+    <ProjectReference Include="../../src/FScript.Numerics.ML/FScript.Numerics.ML.csproj" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 """Exercise first-release and subsequent-release planning without touching the real repo."""
 import os
+import sys
 from pathlib import Path
 import shutil
 import subprocess
@@ -30,7 +31,7 @@ class ReleaseTests(unittest.TestCase):
         self.git('commit', '-qm', 'chore: test release inputs')
 
     def preview(self, version):
-        return subprocess.run(['python3', 'release.py', version, 'true'], cwd=self.root, text=True, capture_output=True)
+        return subprocess.run([sys.executable, 'release.py', version, 'true'], cwd=self.root, text=True, capture_output=True)
 
     def test_bootstrap_compare_and_no_mutation(self):
         result = self.preview('0.1.0')
@@ -51,6 +52,7 @@ class ReleaseTests(unittest.TestCase):
         (self.root / 'dirty').write_text('pending')
         self.assertNotEqual(self.preview('0.1.0').returncode, 0)
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX fake-make harness; Windows still verifies dry runs')
     def test_prepare_updates_shared_version_notes_commit_and_tag(self):
         # Fake only the expensive validation commands: exercise the real Git/file mutations.
         bin_dir = self.root / 'tools'
@@ -61,22 +63,22 @@ class ReleaseTests(unittest.TestCase):
         (self.root / '.gitignore').write_text('gates.log\n')
         self.commit()
         environment = dict(os.environ, PATH=str(bin_dir)+os.pathsep+os.environ['PATH'])
-        result = subprocess.run(['python3','release.py','0.1.0'], cwd=self.root, env=environment, text=True, capture_output=True)
+        result = subprocess.run([sys.executable,'release.py','0.1.0'], cwd=self.root, env=environment, text=True, capture_output=True)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(self.git('log','-1','--format=%s').strip(),'chore(release): 0.1.0')
         self.assertEqual(self.git('cat-file','-t','0.1.0').strip(),'tag')
         self.assertIn('<Version>0.1.0</Version>',(self.root/'Directory.Build.props').read_text())
         self.assertEqual((self.root/'gates.log').read_text().splitlines(),[
-            f'{target} version=0.1.0' for target in ['build','test','smoke-tests','pack','verify-changelog']])
+            f'{target} version=0.1.0' for target in ['build','test','smoke-tests','pack','package-smoke-tests','verify-changelog']])
         self.assertEqual(self.git('status','--porcelain'),'')
-        command = ['python3',str(SCRIPTS/'notes.py'),'0.1.0']
+        command = [sys.executable,str(SCRIPTS/'notes.py'),'0.1.0']
         notes = subprocess.check_output(command,cwd=self.root,text=True)
         self.assertIn(f'{self.bootstrap}...0.1.0',notes)
         self.assertNotEqual(self.preview('0.1.0').returncode,0)
 
     def test_release_notes_require_bullets_and_compare(self):
         (self.root / 'CHANGELOG.md').write_text('# Changelog\n\n## [Unreleased]\n\n## [0.1.0]\n\n- Numerics.\n')
-        command = ['python3', str(SCRIPTS / 'notes.py'), '0.1.0']
+        command = [sys.executable, str(SCRIPTS / 'notes.py'), '0.1.0']
         self.assertNotEqual(subprocess.run(command, cwd=self.root, capture_output=True).returncode, 0)
         with (self.root / 'CHANGELOG.md').open('a') as stream:
             stream.write('\n**Full Changelog**: https://github.com/MagnusOpera/FScript.Numerics/compare/bootstrap...0.1.0\n')

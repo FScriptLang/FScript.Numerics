@@ -1,10 +1,19 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/FScript.Numerics.ML/FScript.Numerics.ML.csproj" />
+    <Project Path="src/FScript.Numerics.Statistics/FScript.Numerics.Statistics.csproj" />
+    <Project Path="src/FScript.Numerics.Lapack/FScript.Numerics.Lapack.csproj" />
+    <Project Path="src/FScript.Numerics.Blas/FScript.Numerics.Blas.csproj" />
     <Project Path="src/FScript.Numerics.Extensions/FScript.Numerics.Extensions.csproj" />
     <Project Path="src/FScript.Numerics/FScript.Numerics.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FScript.Numerics.Extensions.Tests/FScript.Numerics.Extensions.Tests.csproj" />
     <Project Path="tests/FScript.Numerics.Tests/FScript.Numerics.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Reference/Reference.csproj" />
+    <Project Path="tools/BackendProbe/BackendProbe.csproj" />
+    <Project Path="benchmarks/FScript.Numerics.Benchmarks/FScript.Numerics.Benchmarks.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><AllowUnsafeBlocks>true</AllowUnsafeBlocks><Description>Lapack numerical operations for FScript.Numerics.</Description></PropertyGroup><ItemGroup><ProjectReference Include="../FScript.Numerics/FScript.Numerics.csproj" /><ProjectReference Include="../FScript.Numerics.Blas/FScript.Numerics.Blas.csproj" /></ItemGroup></Project>

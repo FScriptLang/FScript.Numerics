@@ -9,8 +9,8 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = '0.82.0'
-server = Path(os.environ.get('FSCRIPT_RELEASE_SERVER_DIR', ROOT / '.out' / 'vscode' / 'extension' / 'server'))
+VERSION = '0.83.1'
+server = Path(os.environ.get('FSCRIPT_RELEASE_SERVER_DIR', ROOT / '.out' / 'vscode' / VERSION / 'extension' / 'server'))
 if not (server / 'FScript.LanguageServer.dll').exists():
     assert 'FSCRIPT_RELEASE_SERVER_DIR' not in os.environ, f'Missing server: {server}'
     archive = ROOT / '.out' / f'fscript-{VERSION}.vsix'
@@ -20,7 +20,7 @@ if not (server / 'FScript.LanguageServer.dll').exists():
     with zipfile.ZipFile(archive) as package:
         for name in package.namelist():
             if name.startswith('extension/server/'):
-                package.extract(name, ROOT / '.out' / 'vscode')
+                package.extract(name, ROOT / '.out' / 'vscode' / VERSION)
 
 class Client:
     def __enter__(self):
@@ -85,7 +85,7 @@ class Client:
         self.log.close()
 
 with Client() as client:
-    folder = ROOT / 'examples'
+    folder = Path(os.environ.get('NUMERICS_SMOKE_FOLDER', ROOT / 'examples'))
     client.request('initialize', {'processId':os.getpid(),'rootUri':folder.as_uri(),'capabilities':{},
         'initializationOptions':{'workspaceFolderUri':folder.as_uri(),'configurationPath':str(folder / 'fscript.toml'),'workspaceTrusted':True}})
     client.send('initialized', {})
@@ -103,5 +103,10 @@ with Client() as client:
     assert 'Shape' in fields and 'Payload' not in fields, fields
     assert 'int list' in (hover := at('textDocument/hover',1,16)), hover
     assert 'NDArray' in (hover := at('textDocument/hover',0,17)), hover
+    model_uri=(folder/'model-editor-check.fss').as_uri()
+    assert not client.open(model_uri,'let x = NDArray.ones [3;2]\nlet m = StandardScaler.fit x\nm.FeatureCount\n')
+    hover=json.dumps(client.request('textDocument/hover',{'textDocument':{'uri':model_uri},'position':{'line':1,'character':10}}))
+    assert 'StandardScaler' in hover,hover
+    assert client.open((folder / 'private-editor-check.fss').as_uri(),'let m = StandardScaler.fit (NDArray.ones [3;2])\nm.Payload')
     assert client.open((folder / 'invalid-editor-check.fss').as_uri(),'NDArray.ofList [1;2]')
     print('Published VS Code server: manifest loading, examples, completion, hover, and authoritative diagnostics passed')

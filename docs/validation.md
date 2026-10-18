@@ -1,0 +1,22 @@
+# Expansion validation
+
+M0–M5 are implemented with explicit Set/set mutation retained. Validation uses .NET SDK 10.0.401, SDK contracts 1.0.0, and published FScript CLI/Runtime/VS Code server 0.83.1. The existing interpreter and SDK repositories are unchanged.
+
+- Warning-free Release solution build.
+- 114 .NET numerical/registration/inference tests and five release-tool tests.
+- All nine checked-output examples through the published CLI and adjacent manifest.
+- Six NuGet packages plus six symbol packages; exact companion dependency graphs and no production Runtime/Language dependency.
+- Pinned native package hashes and actual machine headers, float32/64 native reconstruction, C/F/offset/strided input adaptation, singularity and concurrency tests.
+- Fresh-process missing-native diagnostics with registration still available.
+- Every example through restored local NuGet artifacts, with isolated caches to prevent stale development packages.
+- Published LSP completion, visible-field/model hover, authoritative diagnostics and privacy checks against that package manifest.
+- Published CLI DAP launch, actual native execution, breakpoint, million-element array metadata inspection, model privacy, and normal termination.
+- Release-preparation initial/subsequent dry runs and actual preparation in temporary Git fixtures; no commit/tag/publication in the working repository.
+- Changelog gate, checked generated registration reference, source whitespace checks, Python and Node syntax checks.
+- Recorded copy/allocation/thread diagnostics in [benchmark results](benchmark-results.md).
+
+The numerical/native and package/editor/debugger validations pass on macOS arm64 and in a Linux x64 .NET SDK container with libgfortran5 installed. Linux container validation uses a disposable source snapshot and temporary Git metadata; it never writes into the repository. The final upper-rate Poisson convergence regression is additionally covered by the macOS numerical suite.
+
+Windows x64 CI is configured with MinGW64 GNU runtime prerequisites but was not executed locally. macOS x64 is missing from the selected vendor package; linux-arm64 and win-x86 binaries are mislabeled x64 and deliberately rejected. These are native-backend limits; managed NDArray/statistics/scaler/clustering operations do not load that backend. See [native platform requirements](native-backends.md).
+
+No packages or product releases were published by this change.
