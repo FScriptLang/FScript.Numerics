@@ -12,11 +12,20 @@ public class ExtensionTests
 {
     private static FSharpList<T> List<T>(IEnumerable<T> values) => ListModule.OfSeq(values);
     private static FSharpFunc<T, U> Fn<T, U>(Func<T, U> function) => FSharpFunc<T, U>.FromConverter(v => function(v));
-    private static string Run(string source) => FScript.Language.Pretty.valueToString(ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration()), source).LastValue);
+    private static string Run(string source) => FScript.Language.Pretty.valueToString(ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistrationWithPermissions(FScript.Language.HostPermissions.Native, NumericsExtension.CreateRegistration()), source).LastValue);
     private static ExternalCallContext Context() => new(
         Fn<SV, FSharpFunc<SV, SV>>(_ => Fn<SV, SV>(_ => throw new NotSupportedException())),
         Fn<SV, SV>(_ => throw new NotSupportedException()), Fn<SV, SV>(_ => throw new NotSupportedException()), Fn<Unit, Unit>(_ => null!));
     private static SV Invoke(string name, params SV[] arguments) => NumericsExtension.CreateRegistration().Functions.Single(f => f.Name == "NDArray." + name).Impl.Invoke(Context()).Invoke(List(arguments));
+
+    [Test]
+    public void Embedded_provider_functions_require_an_explicit_native_grant()
+    {
+        var denied = ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration());
+        Assert.Throws<FScript.Language.TypeException>(() =>
+            ScriptHost.loadSourceWithRegistration(denied, "NDArray.sum (NDArray.ones [2])"));
+        Assert.That(Run("NDArray.sum (NDArray.ones [2])"), Is.EqualTo("2"));
+    }
 
     [Test]
     public void Registration_has_authoritative_monomorphic_schemes_and_visible_metadata()
@@ -38,6 +47,44 @@ public class ExtensionTests
     }
 
     [Test]
+    public void Sdk2_descriptors_are_monomorphic_and_round_trip_through_the_published_host()
+    {
+        var registration = NumericsProvider.Provide();
+        Assert.That(registration.Types.Count(), Is.EqualTo(8));
+        foreach (var descriptor in registration.Types)
+            Assert.That(descriptor.TypeParameters, Is.Empty, descriptor.Name);
+
+        var definitions = HostInterop.typeDefinitions(registration, List(Array.Empty<string>()));
+        foreach (var descriptor in registration.Types)
+            Assert.That(definitions[descriptor.Name], Is.InstanceOf<ScriptType.THostManaged>());
+
+        Assert.That(Run("""
+            let values = NDArray.ofRows [[1.0];[3.0]]
+            let model = StandardScaler.fit values
+            let normalized = StandardScaler.transform model values
+            (values.Shape, model.FeatureCount, NDArray.toRows normalized)
+            """), Is.EqualTo("([2;1], 1, [[-1];[1]])"));
+    }
+
+    [Test]
+    public void Sdk2_generic_descriptor_cannot_impersonate_a_numerical_value()
+    {
+        var wrapped = (SV.VHostManaged)NumericsExtension.Wrap(NDArray.FromArray([1, 2]));
+        var host = wrapped.Item;
+        var generic = new HostTypeDescriptor(host.Descriptor.Name, host.Descriptor.Fields,
+            host.Descriptor.HostManaged, List(new[] { 0 }));
+        var forged = SV.NewVHostManaged(new HostManagedValue(generic, host.Fields, host.Payload));
+        Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(forged));
+
+        var model = FScript.Numerics.ML.StandardScaler.Fit(NDArray.FromRows([1], [3]));
+        var fitted = ((SV.VHostManaged)ModelInterop.Wrap(model)).Item;
+        generic = new HostTypeDescriptor(fitted.Descriptor.Name, fitted.Descriptor.Fields,
+            fitted.Descriptor.HostManaged, List(new[] { 0 }));
+        forged = SV.NewVHostManaged(new HostManagedValue(generic, fitted.Fields, fitted.Payload));
+        Assert.Throws<ExtensionException>(() => ModelInterop.Unwrap<FScript.Numerics.ML.StandardScaler>(forged));
+    }
+
+    [Test]
     public void Wrappers_preserve_actual_payload_and_validate_metadata()
     {
         var array = NDArray.FromArray([1, 2]);
@@ -49,7 +96,7 @@ public class ExtensionTests
         Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor, host.Fields, new object()))));
         var fields = MapModule.Add("Rank", SV.NewVInt(99), host.Fields);
         Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(host.Descriptor, fields, array))));
-        var other = new HostTypeDescriptor("Other", host.Descriptor.Fields, true);
+        var other = new HostTypeDescriptor("Other", host.Descriptor.Fields, true, List(Array.Empty<int>()));
         Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.NewVHostManaged(new HostManagedValue(other, host.Fields, array))));
         Assert.Throws<ExtensionException>(() => NumericsExtension.Unwrap(SV.VUnit));
     }
@@ -81,7 +128,7 @@ public class ExtensionTests
             let f x = a
             (a = reader a, a = f (), NDArray.contiguous a = a, NDArray.equals a (NDArray.copy a), a.Id = (identity a).Id)
             """), Is.EqualTo("(true, true, true, true, true)"));
-        var native = ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration());
+        var native = ExtensionBridge.toLanguageRegistrationWithPermissions(FScript.Language.HostPermissions.Native, NumericsExtension.CreateRegistration());
         var loaded = ScriptHost.loadSourceWithRegistration(native, "export let a = NDArray.ofList [1.0;2.0]\nexport let values = [a;a]\na");
         var original = (FScript.Language.Value.VHostManaged)loaded.LastValue;
         var values = (FScript.Language.Value.VList)loaded.ExportedValues["values"];
@@ -132,6 +179,6 @@ public class ExtensionTests
     {
         Assert.That(typeof(NDArray).Assembly.GetReferencedAssemblies().Select(a => a.Name), Has.None.StartsWith("FScript").And.None.EqualTo("FSharp.Core"));
         Assert.That(typeof(NumericsExtension).Assembly.GetReferencedAssemblies().Select(a => a.Name), Has.None.EqualTo("FScript.Language").And.None.EqualTo("FScript.Runtime"));
-        Assert.That(typeof(HostTypeDescriptor).Assembly.GetName().Version, Is.EqualTo(new Version(1, 0, 0, 0)));
+        Assert.That(typeof(HostTypeDescriptor).Assembly.GetName().Version, Is.EqualTo(new Version(2, 0, 0, 0)));
     }
 }

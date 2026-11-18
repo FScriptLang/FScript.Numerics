@@ -17,7 +17,7 @@ public static partial class NumericsExtension
     {
         ("Id", ScriptType.TString), ("Rank", ScriptType.TInt), ("Size", ScriptType.TInt),
         ("Shape", IntList), ("DType", ScriptType.TString), ("Strides",IntList), ("IsContiguous",ScriptType.TBool), ("IsFortranContiguous",ScriptType.TBool), ("IsReadOnly",ScriptType.TBool)
-    }), true);
+    }), true, Sdk.List(Array.Empty<int>()));
     internal static readonly ExtensionRegistration TypeRegistration = new(Sdk.List(new[] { Descriptor }.Concat(ModelInterop.Descriptors)), Sdk.List(Array.Empty<HostUnionDescriptor>()), Sdk.List(Array.Empty<ExternalFunction>()));
     private static string ArrayId(NDArray array) => Identities.GetValue(array, _ => new Identity(Guid.NewGuid().ToString("N"))).Value;
     private static string DTypeName(DType type) => type switch

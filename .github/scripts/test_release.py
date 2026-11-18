@@ -81,7 +81,7 @@ class ReleaseTests(unittest.TestCase):
         command = [sys.executable, str(SCRIPTS / 'notes.py'), '0.1.0']
         self.assertNotEqual(subprocess.run(command, cwd=self.root, capture_output=True).returncode, 0)
         with (self.root / 'CHANGELOG.md').open('a') as stream:
-            stream.write('\n**Full Changelog**: https://github.com/MagnusOpera/FScript.Numerics/compare/bootstrap...0.1.0\n')
+            stream.write('\n**Full Changelog**: https://github.com/FScriptLang/FScript.Numerics/compare/bootstrap...0.1.0\n')
         result = subprocess.run(command, cwd=self.root, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('- Numerics.', result.stdout)

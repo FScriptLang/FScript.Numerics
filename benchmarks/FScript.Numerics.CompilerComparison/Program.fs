@@ -23,7 +23,7 @@ let main args =
         if iterations<=0 || rounds<=0 || positional.Length>3 then invalidArg "args" "Usage: [positive iterations] [positive rounds] [output] [--verify-only]"
         let source=File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"workloads.fss"))
         let provider=typeof<NumericsProvider>.GetMethod("Provide") |> nonNull
-        let registration=NumericsProvider.Provide() |> ExtensionBridge.toLanguageRegistration
+        let registration=NumericsProvider.Provide() |> ExtensionBridge.toLanguageRegistrationWithPermissions HostPermissions.Native
         let purity=ClrBindings.providerPurity [provider]
         let watch=Diagnostics.Stopwatch.StartNew()
         let compiled=Compiler.compileWithRegistrationAndPurity registration purity {Program=Parser.parseProgram source;Externs=[]} |> unwrap

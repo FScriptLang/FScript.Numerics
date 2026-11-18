@@ -9,14 +9,14 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = '0.83.1'
+VERSION = '0.94.3'
 server = Path(os.environ.get('FSCRIPT_RELEASE_SERVER_DIR', ROOT / '.out' / 'vscode' / VERSION / 'extension' / 'server'))
 if not (server / 'FScript.LanguageServer.dll').exists():
     assert 'FSCRIPT_RELEASE_SERVER_DIR' not in os.environ, f'Missing server: {server}'
     archive = ROOT / '.out' / f'fscript-{VERSION}.vsix'
     archive.parent.mkdir(parents=True, exist_ok=True)
     if not archive.exists():
-        urllib.request.urlretrieve(f'https://github.com/MagnusOpera/FScript/releases/download/{VERSION}/fscript-{VERSION}.vsix', archive)
+        urllib.request.urlretrieve(f'https://github.com/FScriptLang/FScript/releases/download/{VERSION}/fscript-{VERSION}.vsix', archive)
     with zipfile.ZipFile(archive) as package:
         for name in package.namelist():
             if name.startswith('extension/server/'):

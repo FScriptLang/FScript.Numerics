@@ -1,6 +1,6 @@
 # FScript.Numerics
 
-Numerical arrays, native linear algebra, statistics, and classical machine learning for .NET 10 and FScript. The numerical libraries are independent of FScript; one SDK extension supplies the script environment.
+Numerical arrays, native linear algebra, statistics, and classical machine learning for .NET 11 and FScript. The numerical libraries are independent of FScript; one SDK extension supplies the script environment.
 
 | Package | Purpose | Dependencies within this repository |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Numerical arrays, native linear algebra, statistics, and classical machine learn
 | `FScript.Numerics.Lapack` | Solvers, LU, QR, Cholesky, SVD, symmetric eigen | Numerics, Blas |
 | `FScript.Numerics.Statistics` | Descriptive statistics and seeded distributions | Numerics |
 | `FScript.Numerics.ML` | Scalers, regression, clustering, PCA, metrics | Numerics, Lapack, Statistics |
-| `FScript.Numerics.Extensions` | FScript descriptors, monomorphic schemes, opaque wrappers | All five libraries; Extensibility 1.0.0 |
+| `FScript.Numerics.Extensions` | FScript descriptors, monomorphic schemes, opaque wrappers | All five libraries; Extensibility 2.0.0 |
 
 All packages share version **0.1.0** and require the matching companion versions. The core and numerical modules have no FScript or FSharp.Core dependency. The production extension has no Language or Runtime dependency.
 
@@ -39,7 +39,7 @@ dotnet tool run fscript -- examples/kmeans.fss
 dotnet tool run fscript -- examples/pca.fss
 ```
 
-The tool manifest pins published FScript **0.83.1** for integration. A global installation also works: `fscript examples/pca.fss`. The adjacent [`fscript.toml`](examples/fscript.toml) selects the built provider. VS Code discovers that same file; use **FScript: Select Configuration** if needed. Trust the workspace, build first, and use **FScript: Debug Current Script** to inspect metadata. Large numerical storage stays hidden. Windows may require stopping the server before rebuilding a DLL it has loaded.
+The tool manifest pins published FScript **0.94.3** for integration. A global installation also works: `fscript examples/pca.fss`. The adjacent [`fscript.toml`](examples/fscript.toml) selects the built provider. VS Code discovers that same file; use **FScript: Select Configuration** if needed. Trust the workspace, build first, and use **FScript: Debug Current Script** to inspect metadata. Large numerical storage stays hidden. Windows may require stopping the server before rebuilding a DLL it has loaded.
 
 After packages are published, consumers can replace local DLL paths with:
 

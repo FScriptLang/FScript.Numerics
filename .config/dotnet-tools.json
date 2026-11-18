@@ -1,1 +1,12 @@
-{"version":1,"isRoot":true,"tools":{"magnusopera.fscript":{"version":"0.83.1","commands":["fscript"]}}}
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "magnusopera.fscript": {
+      "version": "0.94.3",
+      "commands": [
+        "fscript"
+      ]
+    }
+  }
+}

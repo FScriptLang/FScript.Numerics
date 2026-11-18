@@ -80,7 +80,7 @@ public class SignatureExecutionTests
     [TestCaseSource(nameof(Cases))]
     public void Registered_schemes_execute_with_expected_semantics(string expression, string expected)
     {
-        var result = ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration()), Prelude + expression);
+        var result = ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistrationWithPermissions(FScript.Language.HostPermissions.Native, NumericsExtension.CreateRegistration()), Prelude + expression);
         Assert.That(FScript.Language.Pretty.valueToString(result.LastValue), Is.EqualTo(expected));
     }
 }

@@ -8,7 +8,7 @@ for project in sorted(Path('src').glob('*/*.csproj')):
     with zipfile.ZipFile(package) as archive:
         manifest=ET.fromstring(archive.read(name+'.nuspec'));ns={'n':manifest.tag.split('}')[0][1:]}
         dependencies={d.attrib['id']:d.attrib['version'] for d in manifest.findall('.//n:dependency',ns)}
-        assert f'lib/net10.0/{name}.dll' in archive.namelist()
+        assert f'lib/net11.0/{name}.dll' in archive.namelist()
         assert manifest.find('n:metadata/n:version',ns).text==version
         source=ET.parse(project)
         expected={Path(d.attrib['Include']).stem:f'[{version}]' for d in source.findall('.//ProjectReference')}

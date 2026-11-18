@@ -60,7 +60,7 @@ public class ContractTests
     {
         var array = NDArray.FromRows([1.0, 2.0], [3.0, 4.0]);
         var host = ((FScript.Extensibility.ScriptValue.VHostManaged)NumericsExtension.Wrap(array)).Item;
-        var descriptorCopy = new FScript.Extensibility.HostTypeDescriptor(host.Descriptor.Name, host.Descriptor.Fields, host.Descriptor.HostManaged);
+        var descriptorCopy = new FScript.Extensibility.HostTypeDescriptor(host.Descriptor.Name, host.Descriptor.Fields, host.Descriptor.HostManaged, host.Descriptor.TypeParameters);
         var equivalent = new FScript.Extensibility.HostManagedValue(descriptorCopy, host.Fields, array);
         Assert.That(NumericsExtension.Unwrap(FScript.Extensibility.ScriptValue.NewVHostManaged(equivalent)), Is.SameAs(array));
         void Reject(Microsoft.FSharp.Collections.FSharpMap<string, FScript.Extensibility.ScriptValue> fields)

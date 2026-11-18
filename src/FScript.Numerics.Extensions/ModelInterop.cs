@@ -10,7 +10,7 @@ public static class ModelInterop
     private sealed record Identity(string Value);
     private static readonly ConditionalWeakTable<object, Identity> Identities = new();
     private static readonly Type[] Types = [typeof(StandardScaler), typeof(MinMaxScaler), typeof(LinearRegression), typeof(LogisticRegression), typeof(KMeans), typeof(Pca), typeof(LuFactorization)];
-    internal static readonly HostTypeDescriptor[] Descriptors = Types.Select(t => new HostTypeDescriptor(t.Name, Sdk.Map(Fields(t)), true)).ToArray();
+    internal static readonly HostTypeDescriptor[] Descriptors = Types.Select(t => new HostTypeDescriptor(t.Name, Sdk.Map(Fields(t)), true, Sdk.List(Array.Empty<int>()))).ToArray();
     private static IEnumerable<(string, ScriptType)> Fields(Type type)
     {
         yield return ("Id", ScriptType.TString);

@@ -7,7 +7,7 @@ namespace FScript.Numerics.Extensions.Tests;
 
 public class ExpansionTests
 {
-    private static string Run(string source) => FScript.Language.Pretty.valueToString(ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistration(NumericsExtension.CreateRegistration()), source).LastValue);
+    private static string Run(string source) => FScript.Language.Pretty.valueToString(ScriptHost.loadSourceWithRegistration(ExtensionBridge.toLanguageRegistrationWithPermissions(FScript.Language.HostPermissions.Native, NumericsExtension.CreateRegistration()), source).LastValue);
     [Test]
     public void Script_broadcasting_integer_precision_and_readonly_views_are_authoritative()
     {

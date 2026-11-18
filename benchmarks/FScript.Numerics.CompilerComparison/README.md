@@ -14,7 +14,7 @@ make benchmark-compiler fscript=/absolute/path/to/FScript iterations=100 rounds=
 The Make target builds Release, then runs with `DOTNET_TieredCompilation=0 DOTNET_ReadyToRun=0`. For default runtime policy after building:
 
 ```sh
-env -u DOTNET_TieredCompilation -u DOTNET_ReadyToRun dotnet benchmarks/FScript.Numerics.CompilerComparison/bin/Release/net10.0/FScript.Numerics.CompilerComparison.dll 100 7 .out/arrays-default
+env -u DOTNET_TieredCompilation -u DOTNET_ReadyToRun dotnet benchmarks/FScript.Numerics.CompilerComparison/bin/Release/net11.0/FScript.Numerics.CompilerComparison.dll 100 7 .out/arrays-default
 ```
 
 Repeat in separate processes on an idle machine. Output includes JSON batches, timing medians/ranges, per-thread allocations, checksums, source hash, JIT settings, generated managed dependencies, and resolved FScript/F# IL. Generated binaries and IL are separated into `fscript-sdk/`, `fscript-typed/`, and `fscript-inline/` subdirectories. Generated output is ignored by Git. The DLL copies are inspection artifacts, not a standalone published application or native deployment bundle.

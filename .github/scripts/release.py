@@ -13,7 +13,7 @@ tags=sorted((t for t in tags if re.fullmatch(r'\d+\.\d+\.\d+',t)),key=lambda t:t
 assert tags or version == '0.1.0', 'Initial release must be 0.1.0'
 assert not tags or tuple(map(int,version.split('.')))>tuple(map(int,tags[-1].split('.'))),'Release version must increase'
 previous=tags[-1] if tags else subprocess.check_output(['git','rev-list','--max-parents=0','HEAD'],text=True).strip()
-link=f'**Full Changelog**: https://github.com/MagnusOpera/FScript.Numerics/compare/{previous}...{version}'
+link=f'**Full Changelog**: https://github.com/FScriptLang/FScript.Numerics/compare/{previous}...{version}'
 body=f'## [Unreleased]\n\n## [{version}]\n\n{match[1].strip()}\n\n{link}\n\n'
 if dryrun:
     print(f'Would prepare {version}; {link}');sys.exit(0)
