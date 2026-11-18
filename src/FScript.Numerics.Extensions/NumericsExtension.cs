@@ -19,12 +19,43 @@ public static partial class NumericsExtension
         ("Shape", IntList), ("DType", ScriptType.TString), ("Strides",IntList), ("IsContiguous",ScriptType.TBool), ("IsFortranContiguous",ScriptType.TBool), ("IsReadOnly",ScriptType.TBool)
     }), true);
     internal static readonly ExtensionRegistration TypeRegistration = new(Sdk.List(new[] { Descriptor }.Concat(ModelInterop.Descriptors)), Sdk.List(Array.Empty<HostUnionDescriptor>()), Sdk.List(Array.Empty<ExternalFunction>()));
+    private static string ArrayId(NDArray array) => Identities.GetValue(array, _ => new Identity(Guid.NewGuid().ToString("N"))).Value;
+    private static string DTypeName(DType type) => type switch
+    { DType.Float64 => "float64", DType.Float32 => "float32", DType.Int32 => "int32", DType.Int64 => "int64", DType.Bool => "bool", _ => throw new ExtensionException("Unsupported NDArray dtype.") };
+    private static bool IntegerField(FSharpMap<string, ScriptValue> fields, string name, long expected) =>
+        fields.TryGetValue(name, out var value) && value is ScriptValue.VInt integer && integer.Item == expected;
+    private static bool BooleanField(FSharpMap<string, ScriptValue> fields, string name, bool expected) =>
+        fields.TryGetValue(name, out var value) && value is ScriptValue.VBool boolean && boolean.Item == expected;
+    private static bool TextField(FSharpMap<string, ScriptValue> fields, string name, string expected) =>
+        fields.TryGetValue(name, out var value) && value is ScriptValue.VString text && text.Item == expected;
+    private static bool DimensionsField(FSharpMap<string, ScriptValue> fields, string name, IReadOnlyList<int> expected)
+    {
+        if (!fields.TryGetValue(name, out var value) || value is not ScriptValue.VList list)
+            return false;
+        var items = list.Item;
+        for (int i = 0; i < expected.Count; i++)
+        {
+            if (items is null || items.IsEmpty || items.Head is not ScriptValue.VInt integer || integer.Item != expected[i])
+                return false;
+            items = items.Tail;
+        }
+        return items is not null && items.IsEmpty;
+    }
+    // Validate every snapshot field in place; never construct a new map for a read.
+    // Storage is mutable, but all layout/identity metadata is fixed by NDArray construction.
+    private static bool MatchesSnapshot(FSharpMap<string, ScriptValue> fields, NDArray array) =>
+        fields is not null && fields.Count == 9 && TextField(fields, "Id", ArrayId(array)) &&
+        IntegerField(fields, "Rank", array.Rank) && IntegerField(fields, "Size", array.Size) &&
+        DimensionsField(fields, "Shape", array.Shape) && TextField(fields, "DType", DTypeName(array.DType)) &&
+        DimensionsField(fields, "Strides", array.Strides) && BooleanField(fields, "IsContiguous", array.IsContiguous) &&
+        BooleanField(fields, "IsFortranContiguous", array.IsFortranContiguous) && BooleanField(fields, "IsReadOnly", array.IsReadOnly);
+
     private static FSharpMap<string, ScriptValue> Snapshot(NDArray array) => Sdk.Map(new[]
     {
-        ("Id", ScriptValue.NewVString(Identities.GetValue(array, _ => new Identity(Guid.NewGuid().ToString("N"))).Value)),
+        ("Id", ScriptValue.NewVString(ArrayId(array))),
         ("Rank", ScriptValue.NewVInt(array.Rank)), ("Size", ScriptValue.NewVInt(array.Size)),
         ("Shape", ScriptValue.NewVList(Sdk.List(array.Shape.Select(d => ScriptValue.NewVInt(d))))),
-        ("DType", ScriptValue.NewVString(array.DType.ToString().ToLowerInvariant())),
+        ("DType", ScriptValue.NewVString(DTypeName(array.DType))),
         ("Strides",ScriptValue.NewVList(Sdk.List(array.Strides.Select(s=>ScriptValue.NewVInt(s))))),
         ("IsContiguous",ScriptValue.NewVBool(array.IsContiguous)), ("IsFortranContiguous",ScriptValue.NewVBool(array.IsFortranContiguous)), ("IsReadOnly",ScriptValue.NewVBool(array.IsReadOnly))
     });
@@ -33,11 +64,15 @@ public static partial class NumericsExtension
         ArgumentNullException.ThrowIfNull(array);
         return HostInterop.create(TypeRegistration, "NDArray", Snapshot(array), array);
     }
-    public static NDArray Unwrap(ScriptValue value)
+    public static NDArray Unwrap(ScriptValue value) => value is ScriptValue.VHostManaged host
+        ? UnwrapHost(host.Item)
+        : throw new ExtensionException("Expected a registered NDArray with an NDArray payload.");
+
+    internal static NDArray UnwrapHost(HostManagedValue? host)
     {
-        if (value is not ScriptValue.VHostManaged host || !host.Item.Descriptor.Equals(Descriptor) || host.Item.Payload is not NDArray array)
+        if (host is null || host.Descriptor is null || (!ReferenceEquals(host.Descriptor, Descriptor) && !host.Descriptor.Equals(Descriptor)) || host.Payload is not NDArray array)
             throw new ExtensionException("Expected a registered NDArray with an NDArray payload.");
-        if (!host.Item.Fields.Equals(Snapshot(array)))
+        if (!MatchesSnapshot(host.Fields, array))
             throw new ExtensionException("NDArray snapshot metadata does not match its payload.");
         return array;
     }
@@ -86,7 +121,7 @@ public static partial class NumericsExtension
     }
 }
 
-public static class NumericsProvider
+public static partial class NumericsProvider
 {
     [FScriptExternProvider]
     public static ExtensionRegistration Provide() => NumericsExtension.CreateRegistration();

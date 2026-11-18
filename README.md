@@ -87,3 +87,9 @@ make release-prepare version=0.1.0 dryrun=true # requires a clean committed tree
 ```
 
 Negative indexing/slicing, sparse/GPU arrays, general batched algebra, in-place arithmetic, pipelines, Data and Plotting are outside this change. Concurrent writes require caller synchronization.
+
+## Compiler and concurrency contracts
+
+The extension declares [purity and thread-safety metadata](docs/specs/fscript-api.md#compiler-purity-and-task-sharing-contracts). Mutable arrays are neither pure nor promised safe for concurrent sharing. Immutable fitted objects have type guarantees; factories with only immutable inputs may be thread-safe while remaining non-pure. Numerical validation failures are preserved.
+
+For compiled .NET performance, the optional [FScript/F# array comparison](benchmarks/FScript.Numerics.CompilerComparison/README.md) measures real SDK FFI against direct F# NDArray calls and ordinary F# arrays. It requires a local FScript source checkout; regular builds and packages do not.

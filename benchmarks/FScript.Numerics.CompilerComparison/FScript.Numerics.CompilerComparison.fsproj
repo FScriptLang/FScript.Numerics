@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><IsPackable>false</IsPackable><LangVersion>preview</LangVersion><Optimize>true</Optimize>
+    <FScriptSourceRoot Condition="'$(FScriptSourceRoot)' == ''">$(MSBuildThisFileDirectory)../../../FScript</FScriptSourceRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Reference.fs" /><Compile Include="Program.fs" />
+    <None Include="workloads.fss" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="../../src/FScript.Numerics.Extensions/FScript.Numerics.Extensions.csproj" />
+    <ProjectReference Include="$(FScriptSourceRoot)/src/FScript.Runtime/FScript.Runtime.fsproj" />
+    <ProjectReference Include="$(FScriptSourceRoot)/benchmarks/FScript.DotNet.Comparison/FScript.DotNet.Comparison.fsproj" />
+  </ItemGroup>
+</Project>

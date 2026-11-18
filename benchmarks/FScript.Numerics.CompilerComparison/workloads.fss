@@ -1,0 +1,44 @@
+// Each operation is real Numerics SDK FFI, not a replacement builtin.
+let bulk size seed =
+    let a = NDArray.arange 0.0 size 1.0
+    let b = NDArray.addScalar a seed
+    let c = NDArray.multiplyScalar b 3.0
+    NDArray.dot c c
+
+export let bulk32 (seed: float) = bulk 32.0 seed
+export let bulk4096 (seed: float) = bulk 4096.0 seed
+export let bulk65536 (seed: float) = bulk 65536.0 seed
+
+export let indexed1024 (seed: float) =
+    let a = NDArray.arange 0.0 1024.0 1.0
+    let rec loop i total =
+        if i = 1024 then total
+        else loop (i + 1) (total + NDArray.get a [i])
+    loop 0 seed
+
+// Correctness probes: effects and failures must survive unused-result pruning.
+export let mutation (seed: float) =
+    let a = NDArray.zeros [1]
+    NDArray.set a [0] seed
+    NDArray.get a [0]
+
+export let aliasing (seed: float) =
+    let a = NDArray.ofList [1.0;2.0]
+    let view = NDArray.contiguous a
+    let copy = NDArray.copy a
+    NDArray.set view [0] seed
+    NDArray.get a [0] + NDArray.get copy [0]
+
+export let invalid_index (seed: float) =
+    let a = NDArray.zeros [1]
+    let unused = NDArray.get a [0 - 1]
+    seed
+
+// Typed array results remain compatible with legacy SDK operations and metadata.
+export let mixed (seed: float) =
+    let a = NDArray.ofList [1.0;3.0]
+    let same = NDArray.contiguous a
+    let copy = NDArray.copy a
+    if a.Id = same.Id && a = same && a.Rank = 1 then
+        NDArray.mean copy + seed
+    else seed

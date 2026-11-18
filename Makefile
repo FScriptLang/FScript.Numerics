@@ -33,3 +33,11 @@ verify-changelog:
 
 release-prepare:
 	python3 .github/scripts/release.py "$(version)" "$(dryrun)"
+
+.PHONY: benchmark-compiler verify-compiler-comparison
+benchmark-compiler:
+	dotnet build benchmarks/FScript.Numerics.CompilerComparison -c Release $(if $(fscript),-p:FScriptSourceRoot="$(fscript)")
+	DOTNET_TieredCompilation=0 DOTNET_ReadyToRun=0 dotnet benchmarks/FScript.Numerics.CompilerComparison/bin/Release/net10.0/FScript.Numerics.CompilerComparison.dll $(or $(iterations),100) $(or $(rounds),7) "$(or $(output),.out/compiler-comparison)" $(if $(filter true,$(verify)),--verify-only)
+
+verify-compiler-comparison:
+	$(MAKE) benchmark-compiler verify=true $(if $(fscript),fscript="$(fscript)")
